@@ -6,6 +6,8 @@ import sys
 import warnings
 import os
 
+#'-gencode arch=compute_61,code=sm_61 -gencode arch=compute_61,code=compute_61',
+
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -99,7 +101,7 @@ if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 2):
 version_ge_1_5 = []
 if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 4):
     version_ge_1_5 = ['-DVERSION_GE_1_5']
-version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5
+version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5 
 
 if "--distributed_lamb" in sys.argv:
     from torch.utils.cpp_extension import CUDAExtension
@@ -117,7 +119,7 @@ if "--distributed_lamb" in sys.argv:
                                    'apex/contrib/csrc/optimizers/multi_tensor_distopt_lamb_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
                           extra_compile_args={'cxx': ['-O3',] + version_dependent_macros,
-                                              'nvcc':['-O3',
+                                              'nvcc':['-O3', 
                                                       '--use_fast_math'] + version_dependent_macros}))
 
 if "--cuda_ext" in sys.argv:
@@ -142,33 +144,34 @@ if "--cuda_ext" in sys.argv:
                                    'csrc/multi_tensor_adagrad.cu',
                                    'csrc/multi_tensor_novograd.cu',
                                    'csrc/multi_tensor_lamb.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                                               'nvcc':['-lineinfo',
                                                       '-O3',
                                                       # '--resource-usage',
-                                                      '--use_fast_math'] + version_dependent_macros}))
+                                                      '--use_fast_math'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
         ext_modules.append(
             CUDAExtension(name='syncbn',
                           sources=['csrc/syncbn.cpp',
                                    'csrc/welford.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc':['-O3'] + version_dependent_macros}))
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+                                              'nvcc':['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
 
         ext_modules.append(
             CUDAExtension(name='fused_layer_norm_cuda',
                           sources=['csrc/layer_norm_cuda.cpp',
                                    'csrc/layer_norm_cuda_kernel.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                                               'nvcc':['-maxrregcount=50',
                                                       '-O3',
-                                                      '--use_fast_math'] + version_dependent_macros}))
+                                                      '--use_fast_math'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
 
         ext_modules.append(
             CUDAExtension(name='mlp_cuda',
                           sources=['csrc/mlp.cpp',
                                    'csrc/mlp_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc':['-O3'] + version_dependent_macros}))
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+                                              'nvcc':['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']},
+                          extra_link_args=['cublas.lib']))
 
 if "--bnp" in sys.argv:
     from torch.utils.cpp_extension import CUDAExtension
